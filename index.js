@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 // middleware
 app.use(cors());
@@ -26,12 +26,47 @@ async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
+
+        // to detect the collection file 
+        const serviceCollection = client.db('carDoctor').collection('services');
+        // to store order data 
+        const bookingCollection = client.db('carDoctor').collection('bookings');
+
+        // get operation to find data in /services route 
+        app.get('/services', async (req, res) => {
+            const cursor = serviceCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        // to get specific service by id 
+        app.get('/services/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            // we don't need all data so we will sort it by following below code 
+            const options = {
+
+                projection: { title: 1, price: 1, service_id: 1 }
+            };
+
+            const result = await serviceCollection.findOne(query, options);
+            res.send(result);
+        })
+
+        // to insert confirm order data in mongodb 
+        app.post('/bookings', async (req, res) => {
+            const booking = req.body;
+            console.log(booking);
+            const result = await bookingCollection.insertOne(booking);
+            res.send(result)
+        })
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
-        // Ensures that the client will close when you finish/error
-        await client.close();
+        // // Ensures that the client will close when you finish/error
+        // await client.close();
     }
 }
 run().catch(console.dir);
